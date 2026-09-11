@@ -1,7 +1,7 @@
 # Unified Menu Bar
 
 <p align="center">
-  <img src="Assets/icon-source.png" width="160" alt="Unified Menu Bar icon">
+  <img src="Assets/favicon-source.svg" width="160" alt="Unified Menu Bar icon">
 </p>
 
 배터리, Wi-Fi, 음량 상태를 하나의 아이콘으로 보여주는 macOS 전용 메뉴바 앱입니다.
