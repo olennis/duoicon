@@ -86,6 +86,26 @@ swift run UnifiedMenuBar --self-test
 
 렌더링 결과는 `/tmp/unified-menu-bar-icons.png`와 `/tmp/unified-menu-bar-volume-hud.png`에 생성됩니다.
 
+## 아이콘 리소스
+
+<p align="center">
+  <img src="Assets/favicon.png" width="64" alt="Unified Menu Bar favicon">
+</p>
+
+- `Assets/icon-source.png`: macOS 앱 아이콘 원본
+- `Assets/AppIcon.icns`: 앱 번들에 포함되는 macOS 아이콘
+- `Assets/favicon-source.svg`: 좌우 여백을 동일하게 맞춘 정사각형 favicon 원본
+- `Assets/favicon.png`: 흰색 배경의 32×32 PNG favicon
+- `Assets/favicon.ico`: 흰색 배경의 32×32 ICO favicon
+
+favicon을 다시 생성하려면 릴리스 실행 파일을 빌드한 뒤 다음 명령을 실행합니다.
+
+```bash
+sh build-icons.sh
+```
+
+`build-app.sh`를 실행해도 favicon이 자동으로 다시 생성됩니다.
+
 ## 프로젝트 구조
 
 ```text
@@ -105,7 +125,6 @@ unified-menu-bar/
 - Wi-Fi 연결 상태는 네트워크 연결 여부이며 인터넷 접속 가능 여부를 의미하지 않습니다.
 - 일부 외장 오디오 장치는 시스템 음량 속성을 제공하지 않아 음량이 0%로 표시되거나 슬라이더가 비활성화될 수 있습니다.
 - 배터리가 없는 Mac에서는 배터리 아치가 비활성 상태로 표시됩니다.
-- `favicon.ico`와 `favicon.png`는 좌우 여백이 같은 정사각형 벡터 원본 `Assets/favicon-source.svg`에서 흰색 배경으로 생성됩니다. 웹페이지용 리소스이며 macOS 네이티브 앱 자체에서는 사용하지 않습니다.
 
 ## 라이선스
 
