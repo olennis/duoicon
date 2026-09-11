@@ -695,6 +695,34 @@ private final class VolumeController {
 }
 
 private let app = NSApplication.shared
+if CommandLine.arguments.contains("--build-favicon") {
+    let sourceURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        .appendingPathComponent("Assets/favicon-source.svg")
+    let outputURL = sourceURL.deletingLastPathComponent().appendingPathComponent("favicon.png")
+    guard let source = NSImage(contentsOf: sourceURL) else {
+        fatalError("Could not load \(sourceURL.path)")
+    }
+    guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 32,
+                                        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                        isPlanar: false, colorSpaceName: .deviceRGB,
+                                        bytesPerRow: 0, bitsPerPixel: 0),
+          let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+        fatalError("Could not create favicon canvas")
+    }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    NSColor.white.setFill()
+    NSRect(x: 0, y: 0, width: 32, height: 32).fill()
+    source.draw(in: NSRect(x: 0, y: 0, width: 32, height: 32),
+                from: .zero, operation: .sourceOver, fraction: 1)
+    context.flushGraphics()
+    NSGraphicsContext.restoreGraphicsState()
+    guard let png = bitmap.representation(using: .png, properties: [:]) else {
+        fatalError("Could not render favicon")
+    }
+    try png.write(to: outputURL)
+    exit(0)
+}
 if CommandLine.arguments.contains("--self-test") {
     func batteryFixture(_ percentage: Int, charging: Bool = false, pluggedIn: Bool = false) -> BatteryReader.Status {
         .init(summary: "Fixture", powerSource: "Fixture", percentage: percentage, isCharging: charging,
