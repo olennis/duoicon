@@ -1,7 +1,7 @@
-# Unified Menu Bar
+# DuoIcon
 
 <p align="center">
-  <img src="Assets/favicon-source.svg" width="160" alt="Unified Menu Bar icon">
+  <img src="Assets/favicon-source.svg" width="160" alt="DuoIcon icon">
 </p>
 
 배터리, Wi-Fi, 음량 상태를 하나의 아이콘으로 보여주는 macOS 전용 메뉴바 앱입니다.
@@ -33,7 +33,7 @@
 
 ## 볼륨 키 HUD
 
-볼륨 키와 음소거 키를 누르면 macOS 기본 HUD 대신 Unified Menu Bar 아이콘 아래에 커스텀 음량 박스가 표시됩니다.
+볼륨 키와 음소거 키를 누르면 macOS 기본 HUD 대신 DuoIcon 아이콘 아래에 커스텀 음량 박스가 표시됩니다.
 
 - 일반 조절 간격: `1/16`
 - `Option + Shift` 조절 간격: `1/64`
@@ -46,7 +46,7 @@
 
 1. 앱을 실행합니다.
 2. **시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**으로 이동합니다.
-3. **Unified Menu Bar**를 허용합니다.
+3. **DuoIcon**을 허용합니다.
 
 권한이 없거나 현재 출력 장치가 소프트웨어 음량 조절을 지원하지 않으면 볼륨 키는 macOS 기본 동작을 유지합니다. 개발용 ad-hoc 서명은 앱을 다시 빌드할 때 권한을 다시 허용해야 할 수 있습니다.
 
@@ -59,20 +59,20 @@
 ## 빌드 및 실행
 
 ```bash
-git clone https://github.com/olennis/unified-menu-bar.git
-cd unified-menu-bar
+git clone https://github.com/olennis/duoicon.git
+cd duoicon
 sh build-app.sh
-open "dist/Unified Menu Bar.app"
+open "dist/DuoIcon.app"
 ```
 
-앱은 Dock 아이콘 없이 메뉴바에서만 실행됩니다. 종료하려면 메뉴에서 **Quit Unified Menu Bar**를 선택합니다.
+앱은 Dock 아이콘 없이 메뉴바에서만 실행됩니다. 종료하려면 메뉴에서 **Quit DuoIcon**을 선택합니다.
 
 `build-app.sh`는 릴리스 바이너리와 앱 아이콘을 생성하고 앱을 로컬 ad-hoc 방식으로 서명합니다. 다른 사용자에게 배포하려면 Apple Developer ID 서명과 notarization이 필요합니다.
 
 ## 테스트
 
 ```bash
-swift run UnifiedMenuBar --self-test
+swift run DuoIcon --self-test
 ```
 
 다음 항목을 검사합니다.
@@ -84,12 +84,12 @@ swift run UnifiedMenuBar --self-test
 - Wi-Fi 상태 안정화
 - 볼륨 HUD 위치 및 렌더링
 
-렌더링 결과는 `/tmp/unified-menu-bar-icons.png`와 `/tmp/unified-menu-bar-volume-hud.png`에 생성됩니다.
+렌더링 결과는 `/tmp/duoicon-icons.png`와 `/tmp/duoicon-volume-hud.png`에 생성됩니다.
 
 ## 아이콘 리소스
 
 <p align="center">
-  <img src="Assets/favicon.png" width="64" alt="Unified Menu Bar favicon">
+  <img src="Assets/favicon.png" width="64" alt="DuoIcon favicon">
 </p>
 
 - `Assets/icon-source.png`: macOS 앱 아이콘 원본
@@ -109,9 +109,9 @@ sh build-icons.sh
 ## 프로젝트 구조
 
 ```text
-unified-menu-bar/
+duoicon/
 ├── Assets/                  # 앱 아이콘 및 favicon 원본/산출물
-├── Sources/UnifiedMenuBar/
+├── Sources/DuoIcon/
 │   ├── main.swift           # 상태 조회, 메뉴, 동적 메뉴바 아이콘
 │   └── VolumeKeyHUD.swift   # 볼륨 키 감지 및 아이콘 하단 HUD
 ├── Info.plist

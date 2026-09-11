@@ -165,7 +165,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         refresh.target = self
         menu.addItem(refresh)
 
-        let quit = NSMenuItem(title: "Quit Unified Menu Bar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit DuoIcon", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
 
@@ -744,7 +744,7 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(edgeFrame.maxX <= -8 && edgeFrame.minX >= -1432)
     let hudPreview = VolumeKeyHUD()
     hudPreview.update(volume: 0.625, muted: false, canSetVolume: true, canSetMute: true)
-    try hudPreview.writePreview(to: URL(fileURLWithPath: "/tmp/unified-menu-bar-volume-hud.png"))
+    try hudPreview.writePreview(to: URL(fileURLWithPath: "/tmp/duoicon-volume-hud.png"))
     var fade = CenterTransition()
     fade.set(.wifi, now: 0, reducedMotion: false)
     precondition(!fade.isAnimating(at: 0))
@@ -800,7 +800,7 @@ if CommandLine.arguments.contains("--self-test") {
     }
     sheet.unlockFocus()
     let bitmap = NSBitmapImageRep(data: sheet.tiffRepresentation!)!
-    try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "/tmp/unified-menu-bar-icons.png"))
+    try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "/tmp/duoicon-icons.png"))
     print("PASS: volume boundaries, battery colors, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
     print("Live state: \(BatteryReader().status().summary), \(WiFiReader().status().title), volume \(VolumeController().outputVolume)")
     exit(0)

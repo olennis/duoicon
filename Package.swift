@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "UnifiedMenuBar",
+    name: "DuoIcon",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .executableTarget(
-            name: "UnifiedMenuBar",
+            name: "DuoIcon",
             resources: [
                 .process("Resources")
             ],
