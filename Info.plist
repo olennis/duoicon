@@ -12,5 +12,7 @@
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSLocationUsageDescription</key><string>DuoIcon uses Location access only to show the name of the connected Wi-Fi network.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>DuoIcon uses Location access only to show the name of the connected Wi-Fi network.</string>
 </dict>
 </plist>

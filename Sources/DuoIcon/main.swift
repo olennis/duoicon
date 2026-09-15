@@ -1,14 +1,17 @@
 import AppKit
 import AudioToolbox
 import CoreAudio
+import CoreLocation
 import CoreWLAN
 import IOKit.ps
 
-private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
+private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLocationManagerDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 36)
     private let volume = VolumeController()
     private let battery = BatteryReader()
     private let wifi = WiFiReader()
+    private let locationManager = CLLocationManager()
+    private var didRequestWiFiNameAccess = false
     private let volumeKeys = VolumeKeyMonitor()
     private let volumeHUD = VolumeKeyHUD()
 
@@ -23,6 +26,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        locationManager.delegate = self
         volumeKeys.handle = { [weak self] code, fine in
             guard let self, let button = self.statusItem.button, button.window?.isVisible == true else { return false }
             guard code == 7 ? self.volume.canSetMute : self.volume.canSetVolume else { return false }
@@ -86,10 +90,28 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         volumeHUD.hide()
+        requestWiFiNameAccessIfNeeded()
         menu.removeAllItems()
         for item in buildMenu().items {
             item.menu?.removeItem(item)
             menu.addItem(item)
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        refreshMenu()
+    }
+
+    private func requestWiFiNameAccessIfNeeded() {
+        let status = wifi.status()
+        guard status.isConnected, status.networkName == nil,
+              locationManager.authorizationStatus == .notDetermined,
+              !didRequestWiFiNameAccess else { return }
+        didRequestWiFiNameAccess = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            self.locationManager.requestWhenInUseAuthorization()
         }
     }
 
@@ -178,6 +200,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         let status = wifi.status()
         menu.addItem(disabledItem("Wi-Fi"))
         menu.addItem(disabledItem(status.title))
+
+        if status.isConnected && status.networkName == nil &&
+            (locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted) {
+            menu.addItem(disabledItem("Allow Location access to show Wi-Fi name"))
+        }
 
         let settings = NSMenuItem(title: "Open Wi-Fi Settings", action: #selector(openWiFiSettings), keyEquivalent: "")
         settings.target = self
@@ -536,6 +563,7 @@ private final class WiFiReader {
     struct Status {
         let title: String
         let isConnected: Bool
+        var networkName: String? = nil
     }
 
     private var stability = WiFiStability()
@@ -556,8 +584,9 @@ private final class WiFiReader {
         // station mode briefly after it has disassociated from the access point.
         let mode = interface.interfaceMode()
         let connected = Self.isAssociated(mode: mode, rssi: interface.rssiValue())
-        let title = connected ? interface.ssid().map { "Connected: \($0)" } ?? "Connected" : "Not connected"
-        return Status(title: title, isConnected: connected)
+        let networkName = connected ? interface.ssid().flatMap { $0.isEmpty ? nil : $0 } : nil
+        let title = connected ? networkName.map { "Connected: \($0)" } ?? "Connected" : "Not connected"
+        return Status(title: title, isConnected: connected, networkName: networkName)
     }
 
     static func isAssociated(mode: CWInterfaceMode, rssi: Int) -> Bool {
