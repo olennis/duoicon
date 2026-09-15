@@ -545,10 +545,16 @@ private final class WiFiReader {
             return Status(title: "Wi-Fi off", isConnected: false)
         }
         // SSIDs can be redacted by Location Services while the interface is connected.
+        // interfaceMode alone is not sufficient here: macOS can leave the interface in
+        // station mode briefly after it has disassociated from the access point.
         let mode = interface.interfaceMode()
-        let connected = mode == .station || mode == .IBSS
+        let connected = Self.isAssociated(mode: mode, rssi: interface.rssiValue())
         let title = connected ? interface.ssid().map { "Connected: \($0)" } ?? "Connected" : "Not connected"
         return Status(title: title, isConnected: connected)
+    }
+
+    static func isAssociated(mode: CWInterfaceMode, rssi: Int) -> Bool {
+        (mode == .station || mode == .IBSS) && rssi != 0
     }
 }
 
@@ -762,6 +768,10 @@ if CommandLine.arguments.contains("--self-test") {
     var wifiStability = WiFiStability()
     let online = WiFiReader.Status(title: "Connected", isConnected: true)
     let offline = WiFiReader.Status(title: "Not connected", isConnected: false)
+    precondition(WiFiReader.isAssociated(mode: .station, rssi: -55))
+    precondition(WiFiReader.isAssociated(mode: .IBSS, rssi: -55))
+    precondition(!WiFiReader.isAssociated(mode: .station, rssi: 0))
+    precondition(!WiFiReader.isAssociated(mode: .none, rssi: -55))
     precondition(wifiStability.update(online, now: 0).isConnected)
     precondition(wifiStability.update(offline, now: 1).isConnected)
     precondition(wifiStability.update(offline, now: 1.5).isConnected)
@@ -782,7 +792,7 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(5), now: 0) == .battery)
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(5, charging: true), now: 1) == .wifi)
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(-1), now: 2) == .wifi)
-    for symbol in ["speaker.slash.fill", "speaker.wave.1.fill", "speaker.wave.2.fill", "speaker.wave.3.fill", "battery.0percent"] {
+    for symbol in ["wifi", "wifi.slash", "speaker.slash.fill", "speaker.wave.1.fill", "speaker.wave.2.fill", "speaker.wave.3.fill", "battery.0percent"] {
         precondition(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil)
     }
     let sheet = NSImage(size: NSSize(width: 720, height: 240))
