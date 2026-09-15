@@ -99,8 +99,10 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         let wifiStatus = wifi.status()
         let outputVolume = volume.outputVolume
         let isMuted = volume.isMuted
+        let isAirPodsConnected = volume.isAirPodsConnected
         let center = centerNotice.update(volume: outputVolume, isMuted: isMuted,
-                                         battery: batteryStatus, now: ProcessInfo.processInfo.systemUptime)
+                                         battery: batteryStatus, isAirPodsConnected: isAirPodsConnected,
+                                         now: ProcessInfo.processInfo.systemUptime)
         if let button = statusItem.button {
             button.appearsDisabled = false
             button.contentTintColor = nil
@@ -297,7 +299,7 @@ private struct CenterTransition {
 }
 
 private struct CenterNotice {
-    enum Kind { case wifi, volume, battery }
+    enum Kind { case wifi, volume, battery, airPods }
 
     private var previousVolume: Float32?
     private var previousMute: Bool?
@@ -311,7 +313,7 @@ private struct CenterNotice {
     }
 
     mutating func update(volume: Float32, isMuted: Bool, battery: BatteryReader.Status,
-                         now: TimeInterval) -> Kind {
+                         isAirPodsConnected: Bool = false, now: TimeInterval) -> Kind {
         if let previousVolume, let previousMute,
            abs(volume - previousVolume) > 0.001 || previousMute != isMuted {
             volumeUntil = now + 2
@@ -326,6 +328,9 @@ private struct CenterNotice {
             pendingBattery = false
             batteryUntil = 0
         }
+        // The active AirPods output is persistent status, so it takes precedence
+        // over temporary volume and low-battery notices until the device disconnects.
+        if isAirPodsConnected { return .airPods }
         // Let a low-battery notice wait until the user's volume interaction ends.
         if now < volumeUntil { return .volume }
         if pendingBattery {
@@ -370,6 +375,8 @@ private enum StatusIcon {
                 volume <= 0.66 ? "speaker.wave.2.fill" : "speaker.wave.3.fill"
         case .battery:
             symbolName = "battery.0percent"
+        case .airPods:
+            symbolName = "airpods"
         }
         context.saveGState()
         context.setAlpha(opacity)
@@ -619,6 +626,19 @@ private final class BatteryReader {
 private final class VolumeController {
     var canSetVolume: Bool { canSet(kAudioHardwareServiceDeviceProperty_VirtualMainVolume) }
     var canSetMute: Bool { canSet(kAudioDevicePropertyMute) }
+    var isAirPodsConnected: Bool {
+        let device = defaultOutputDevice()
+        return Self.isAirPodsDevice(
+            name: stringProperty(kAudioObjectPropertyName, of: device),
+            modelName: stringProperty(kAudioObjectPropertyModelName, of: device)
+        )
+    }
+
+    static func isAirPodsDevice(name: String?, modelName: String?) -> Bool {
+        [name, modelName]
+            .compactMap { $0?.lowercased() }
+            .contains { $0.contains("airpods") }
+    }
 
     private func canSet(_ selector: AudioObjectPropertySelector) -> Bool {
         var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioDevicePropertyScopeOutput,
@@ -682,6 +702,20 @@ private final class VolumeController {
         var size = UInt32(MemoryLayout<AudioDeviceID>.size)
         AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID)
         return deviceID
+    }
+
+    private func stringProperty(_ selector: AudioObjectPropertySelector, of device: AudioDeviceID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr else {
+            return nil
+        }
+        return value?.takeRetainedValue() as String?
     }
 
     private func getScalarProperty(_ address: AudioObjectPropertyAddress) -> Float32? {
@@ -787,12 +821,17 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(notice.update(volume: 0.7, isMuted: false, battery: batteryFixture(9), now: 6.9) == .battery)
     precondition(notice.update(volume: 0.7, isMuted: false, battery: batteryFixture(9), now: 7) == .wifi)
     precondition(notice.update(volume: 0.7, isMuted: true, battery: batteryFixture(9), now: 8) == .volume)
+    precondition(notice.update(volume: 0.7, isMuted: true, battery: batteryFixture(9),
+                               isAirPodsConnected: true, now: 8.5) == .airPods)
     precondition(notice.update(volume: 0.7, isMuted: true, battery: batteryFixture(9), now: 10) == .wifi)
     var startupNotice = CenterNotice()
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(5), now: 0) == .battery)
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(5, charging: true), now: 1) == .wifi)
     precondition(startupNotice.update(volume: 0, isMuted: false, battery: batteryFixture(-1), now: 2) == .wifi)
-    for symbol in ["wifi", "wifi.slash", "speaker.slash.fill", "speaker.wave.1.fill", "speaker.wave.2.fill", "speaker.wave.3.fill", "battery.0percent"] {
+    precondition(VolumeController.isAirPodsDevice(name: "Alex's AirPods Pro", modelName: nil))
+    precondition(VolumeController.isAirPodsDevice(name: "Headphones", modelName: "AirPods Pro"))
+    precondition(!VolumeController.isAirPodsDevice(name: "Studio Display Speakers", modelName: nil))
+    for symbol in ["wifi", "wifi.slash", "speaker.slash.fill", "speaker.wave.1.fill", "speaker.wave.2.fill", "speaker.wave.3.fill", "battery.0percent", "airpods"] {
         precondition(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil)
     }
     let sheet = NSImage(size: NSSize(width: 720, height: 240))
@@ -811,7 +850,7 @@ if CommandLine.arguments.contains("--self-test") {
     sheet.unlockFocus()
     let bitmap = NSBitmapImageRep(data: sheet.tiffRepresentation!)!
     try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "/tmp/duoicon-icons.png"))
-    print("PASS: volume boundaries, battery colors, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
+    print("PASS: volume boundaries, battery colors, AirPods priority, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
     print("Live state: \(BatteryReader().status().summary), \(WiFiReader().status().title), volume \(VolumeController().outputVolume)")
     exit(0)
 }
