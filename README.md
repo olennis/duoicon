@@ -115,7 +115,9 @@ duoicon/
 ├── Assets/                  # App icon and favicon sources/outputs
 ├── Sources/DuoIcon/
 │   ├── main.swift           # Status readers, menu, dynamic menu bar icon
-│   └── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
+│   ├── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
+│   ├── Localization.swift   # macOS language selection and string lookup
+│   └── Resources/          # English/Korean strings and icon references
 ├── Info.plist
 ├── Package.swift
 ├── build-app.sh
@@ -142,3 +144,5 @@ To verify the localization resources and language selection after a release buil
 ```sh
 python3 scripts/check-localization.py
 ```
+
+See [CHANGELOG.md](CHANGELOG.md) for changes.
