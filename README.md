@@ -6,6 +6,8 @@
 
 A macOS menu bar app that shows battery, Wi-Fi, and volume status in a single icon.
 
+The menus follow your Mac's language setting. English and Korean are included, and English is used for any other language.
+
 ## Features
 
 - Top arc shows the battery level
@@ -113,6 +115,7 @@ Running `build-app.sh` also regenerates the favicons automatically.
 ```text
 duoicon/
 ├── Assets/                  # App icon and favicon sources/outputs
+├── Localization/            # <language>.lproj translations copied into the app bundle
 ├── Sources/DuoIcon/
 │   ├── main.swift           # Status readers, menu, dynamic menu bar icon
 │   └── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
@@ -121,6 +124,10 @@ duoicon/
 ├── build-app.sh
 └── build-icons.sh
 ```
+
+## Translations
+
+UI strings are written in English in the source code. Translations live in `Localization/<language>.lproj/` (`Localizable.strings` for the menus, `InfoPlist.strings` for permission prompts), and `build-app.sh` copies them into the app bundle. To add a language, create a new `.lproj` folder with the same keys and add the language code to `CFBundleLocalizations` in `Info.plist`.
 
 ## Known limitations
 

@@ -10,5 +10,7 @@ cp Assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Assets/favicon.ico "$APP/Contents/Resources/favicon.ico"
 cp .build/release/DuoIcon "$APP/Contents/MacOS/DuoIcon"
 cp Info.plist "$APP/Contents/Info.plist"
+# UI follows the system language: English source strings plus translations.
+cp -R Localization/*.lproj "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 printf 'Built %s/%s\n' "$PWD" "$APP"

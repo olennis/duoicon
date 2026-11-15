@@ -78,7 +78,7 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     }
 
     private func configureStatusItem() {
-        statusItem.button?.toolTip = "Wi-Fi, Volume, Battery"
+        statusItem.button?.toolTip = String(localized: "Wi-Fi, Volume, Battery")
         statusItem.button?.imagePosition = .imageOnly
         updateStatusIcon()
     }
@@ -159,11 +159,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         volumeSlider?.doubleValue = Double(outputVolume)
         volumeSlider?.isEnabled = volume.canSetVolume
         muteButton?.isEnabled = volume.canSetMute
-        volumeLabel?.stringValue = isMuted ? "Muted" : "\(Int(outputVolume * 100))%"
-        muteButton?.image = NSImage(systemSymbolName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: "Mute")
+        volumeLabel?.stringValue = isMuted ? String(localized: "Muted") : "\(Int(outputVolume * 100))%"
+        muteButton?.image = NSImage(systemSymbolName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: String(localized: "Mute"))
         volumeHUD.update(volume: outputVolume, muted: isMuted,
                          canSetVolume: volume.canSetVolume, canSetMute: volume.canSetMute)
-        let summary = "\(batteryStatus.summary), \(wifiStatus.title), Volume \(isMuted ? 0 : Int(outputVolume * 100))%"
+        let summary = String(localized: "\(batteryStatus.summary), \(wifiStatus.title), Volume \(isMuted ? 0 : Int(outputVolume * 100))%")
         statusItem.button?.toolTip = summary
         statusItem.button?.setAccessibilityLabel(summary)
     }
@@ -174,10 +174,10 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
         addVolumeSection(to: menu)
         if !volumeKeys.isActive {
-            let access = NSMenuItem(title: "Enable Icon-Anchored Volume HUD...", action: #selector(enableVolumeKeyHUD), keyEquivalent: "")
+            let access = NSMenuItem(title: String(localized: "Enable Icon-Anchored Volume HUD..."), action: #selector(enableVolumeKeyHUD), keyEquivalent: "")
             access.target = self
             menu.addItem(access)
-            menu.addItem(disabledItem("Accessibility permission required"))
+            menu.addItem(disabledItem(String(localized: "Accessibility permission required")))
         }
         menu.addItem(.separator())
         addWiFiSection(to: menu)
@@ -185,11 +185,11 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         addBatterySection(to: menu)
         menu.addItem(.separator())
 
-        let refresh = NSMenuItem(title: "Refresh", action: #selector(refreshMenu), keyEquivalent: "r")
+        let refresh = NSMenuItem(title: String(localized: "Refresh"), action: #selector(refreshMenu), keyEquivalent: "r")
         refresh.target = self
         menu.addItem(refresh)
 
-        let quit = NSMenuItem(title: "Quit DuoIcon", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: String(localized: "Quit DuoIcon"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
 
@@ -203,34 +203,34 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
 
         if status.isConnected && status.networkName == nil &&
             (locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted) {
-            menu.addItem(disabledItem("Allow Location access to show Wi-Fi name"))
+            menu.addItem(disabledItem(String(localized: "Allow Location access to show Wi-Fi name")))
         }
 
-        let settings = NSMenuItem(title: "Open Wi-Fi Settings", action: #selector(openWiFiSettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: String(localized: "Open Wi-Fi Settings"), action: #selector(openWiFiSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
     }
 
     private func addVolumeSection(to menu: NSMenu) {
-        menu.addItem(disabledItem("Volume"))
+        menu.addItem(disabledItem(String(localized: "Volume")))
 
         let row = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 38))
-        let mute = NSButton(image: NSImage(systemSymbolName: volume.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: "Mute")!, target: self, action: #selector(toggleMute))
+        let mute = NSButton(image: NSImage(systemSymbolName: volume.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: String(localized: "Mute"))!, target: self, action: #selector(toggleMute))
         mute.frame = NSRect(x: 12, y: 5, width: 28, height: 28)
         mute.isBordered = false
-        mute.toolTip = "Mute / Unmute"
+        mute.toolTip = String(localized: "Mute / Unmute")
         row.addSubview(mute)
         muteButton = mute
         let slider = NSSlider(value: Double(volume.outputVolume), minValue: 0, maxValue: 1,
                               target: self, action: #selector(changeVolume(_:)))
         slider.frame = NSRect(x: 48, y: 7, width: 158, height: 24)
         slider.isContinuous = true
-        slider.setAccessibilityLabel("Output volume")
+        slider.setAccessibilityLabel(String(localized: "Output volume"))
         slider.isEnabled = volume.canSetVolume
         mute.isEnabled = volume.canSetMute
         row.addSubview(slider)
         volumeSlider = slider
-        let label = NSTextField(labelWithString: volume.isMuted ? "Muted" : "\(Int(volume.outputVolume * 100))%")
+        let label = NSTextField(labelWithString: volume.isMuted ? String(localized: "Muted") : "\(Int(volume.outputVolume * 100))%")
         label.frame = NSRect(x: 212, y: 11, width: 56, height: 17)
         label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         label.alignment = .right
@@ -240,18 +240,18 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
         item.view = row
         menu.addItem(item)
 
-        let settings = NSMenuItem(title: "Open Sound Settings", action: #selector(openSoundSettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: String(localized: "Open Sound Settings"), action: #selector(openSoundSettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
     }
 
     private func addBatterySection(to menu: NSMenu) {
         let status = battery.status()
-        menu.addItem(disabledItem("Battery"))
+        menu.addItem(disabledItem(String(localized: "Battery")))
         menu.addItem(disabledItem(status.summary))
         menu.addItem(disabledItem(status.powerSource))
 
-        let settings = NSMenuItem(title: "Open Battery Settings", action: #selector(openBatterySettings), keyEquivalent: "")
+        let settings = NSMenuItem(title: String(localized: "Open Battery Settings"), action: #selector(openBatterySettings), keyEquivalent: "")
         settings.target = self
         menu.addItem(settings)
     }
@@ -586,11 +586,11 @@ private final class WiFiReader {
     private func readStatus() -> Status {
         guard let interface = CWWiFiClient.shared().interface() else {
             lastBars = nil
-            return Status(title: "Wi-Fi unavailable", isConnected: false)
+            return Status(title: String(localized: "Wi-Fi unavailable"), isConnected: false)
         }
         guard interface.powerOn() else {
             lastBars = nil
-            return Status(title: "Wi-Fi off", isConnected: false)
+            return Status(title: String(localized: "Wi-Fi off"), isConnected: false)
         }
         // SSIDs can be redacted by Location Services while the interface is connected.
         // interfaceMode alone is not sufficient here: macOS can leave the interface in
@@ -600,7 +600,9 @@ private final class WiFiReader {
         let connected = Self.isAssociated(mode: mode, rssi: rssi)
         lastBars = connected ? Self.bars(rssi: rssi, previous: lastBars) : nil
         let networkName = connected ? interface.ssid().flatMap { $0.isEmpty ? nil : $0 } : nil
-        let title = connected ? networkName.map { "Connected: \($0)" } ?? "Connected" : "Not connected"
+        let title = connected
+            ? networkName.map { String(localized: "Connected: \($0)") } ?? String(localized: "Connected")
+            : String(localized: "Not connected")
         return Status(title: title, isConnected: connected, networkName: networkName, bars: lastBars ?? 0)
     }
 
@@ -652,8 +654,8 @@ private final class BatteryReader {
             }).first(where: { $0[kIOPSTypeKey] as? String == kIOPSInternalBatteryType })
         else {
             return Status(
-                summary: "No battery information",
-                powerSource: "Power source unavailable",
+                summary: String(localized: "No battery information"),
+                powerSource: String(localized: "Power source unavailable"),
                 percentage: -1,
                 isCharging: false
             )
@@ -663,16 +665,26 @@ private final class BatteryReader {
         let max = description[kIOPSMaxCapacityKey] as? Int ?? 100
         let percentage = max > 0 ? Int(round(Double(current) / Double(max) * 100)) : 0
         let isCharging = description[kIOPSIsChargingKey] as? Bool ?? false
-        let state = isCharging ? "Charging" : "Not charging"
-        let sourceState = description[kIOPSPowerSourceStateKey] as? String ?? "Unknown power source"
+        let state = isCharging ? String(localized: "Charging") : String(localized: "Not charging")
+        let sourceState = description[kIOPSPowerSourceStateKey] as? String ?? String(localized: "Unknown power source")
 
         return Status(
-            summary: "\(percentage)% - \(state)",
-            powerSource: sourceState,
+            summary: String(localized: "\(percentage)% - \(state)"),
+            powerSource: Self.displayName(powerSource: sourceState),
             percentage: percentage,
             isCharging: isCharging,
             isPluggedIn: sourceState == kIOPSACPowerValue
         )
+    }
+
+    /// IOKit 이 돌려주는 전원 상태 값("AC Power" 등)을 메뉴에 보여 줄 이름으로 바꾼다.
+    private static func displayName(powerSource: String) -> String {
+        switch powerSource {
+        case kIOPSACPowerValue: String(localized: "Power Adapter")
+        case kIOPSBatteryPowerValue: String(localized: "Battery Power")
+        case kIOPSOffLineValue: String(localized: "Offline")
+        default: powerSource
+        }
     }
 }
 

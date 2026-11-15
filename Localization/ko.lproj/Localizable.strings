@@ -1,0 +1,32 @@
+/* Korean translations. Keys are the English source strings. */
+
+"%@, %@, Volume %lld%%" = "%@, %@, 음량 %lld%%";
+"%lld%% - %@" = "%lld%% - %@";
+"Accessibility permission required" = "손쉬운 사용 권한 필요";
+"Allow Location access to show Wi-Fi name" = "Wi-Fi 이름을 보려면 위치 접근을 허용하세요";
+"Battery" = "배터리";
+"Battery Power" = "배터리 전원";
+"Charging" = "충전 중";
+"Connected" = "연결됨";
+"Connected: %@" = "연결됨: %@";
+"Enable Icon-Anchored Volume HUD..." = "아이콘 아래 음량 HUD 켜기...";
+"Mute" = "음소거";
+"Mute / Unmute" = "음소거 / 음소거 해제";
+"Muted" = "음소거됨";
+"No battery information" = "배터리 정보 없음";
+"Not charging" = "충전 안 함";
+"Not connected" = "연결 안 됨";
+"Offline" = "오프라인";
+"Open Battery Settings" = "배터리 설정 열기";
+"Open Sound Settings" = "사운드 설정 열기";
+"Open Wi-Fi Settings" = "Wi-Fi 설정 열기";
+"Output volume" = "출력 음량";
+"Power Adapter" = "전원 어댑터";
+"Power source unavailable" = "전원 정보 없음";
+"Quit DuoIcon" = "DuoIcon 종료";
+"Refresh" = "새로 고침";
+"Unknown power source" = "알 수 없는 전원";
+"Volume" = "음량";
+"Wi-Fi off" = "Wi-Fi 꺼짐";
+"Wi-Fi unavailable" = "Wi-Fi 사용 불가";
+"Wi-Fi, Volume, Battery" = "Wi-Fi, 음량, 배터리";
