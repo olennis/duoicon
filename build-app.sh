@@ -9,6 +9,12 @@ mkdir -p "$APP/Contents/Resources"
 cp Assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Assets/favicon.ico "$APP/Contents/Resources/favicon.ico"
 cp .build/release/DuoIcon "$APP/Contents/MacOS/DuoIcon"
+# Keep SwiftPM resources available after moving the app away from this checkout.
+cp -R .build/release/DuoIcon_DuoIcon.bundle "$APP/Contents/Resources/"
+for lang in en ko; do
+    mkdir -p "$APP/Contents/Resources/$lang.lproj"
+    cp "Sources/DuoIcon/Resources/$lang.lproj/InfoPlist.strings" "$APP/Contents/Resources/$lang.lproj/"
+done
 cp Info.plist "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP"
 printf 'Built %s/%s\n' "$PWD" "$APP"

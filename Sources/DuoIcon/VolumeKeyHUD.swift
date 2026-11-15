@@ -100,12 +100,12 @@ final class VolumeKeyHUD {
         panel.contentView = background
         mute.frame = NSRect(x: 12, y: 14, width: 28, height: 28)
         mute.isBordered = false
-        mute.toolTip = "Mute / Unmute"
+        mute.toolTip = L10n.text("Mute / Unmute")
         mute.target = self
         mute.action = #selector(toggleMute)
         slider.frame = NSRect(x: 48, y: 16, width: 158, height: 24)
         slider.isContinuous = true
-        slider.setAccessibilityLabel("Output volume")
+        slider.setAccessibilityLabel(L10n.text("Output volume"))
         slider.target = self
         slider.action = #selector(changeVolume)
         label.frame = NSRect(x: 212, y: 20, width: 56, height: 17)
@@ -118,9 +118,9 @@ final class VolumeKeyHUD {
         slider.doubleValue = Double(volume)
         slider.isEnabled = canSetVolume
         mute.isEnabled = canSetMute
-        label.stringValue = muted ? "Muted" : "\(Int(volume * 100))%"
+        label.stringValue = muted ? L10n.text("Muted") : "\(Int(volume * 100))%"
         mute.image = NSImage(systemSymbolName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                            accessibilityDescription: "Mute")
+                            accessibilityDescription: L10n.text("Mute"))
     }
 
     static func frame(below anchor: NSRect, screen: NSRect) -> NSRect {

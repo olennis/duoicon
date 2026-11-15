@@ -132,3 +132,13 @@ duoicon/
 ## License
 
 Until a separate license is added, all rights are reserved by the repository owner.
+
+## Interface language
+
+The app follows your Mac’s preferred language and supports English and Korean. Other languages fall back to English. You can also choose a language for this app in **System Settings → General → Language & Region → Applications**. Relaunch the app after changing its language.
+
+To verify the localization resources and language selection after a release build:
+
+```sh
+python3 scripts/check-localization.py
+```
