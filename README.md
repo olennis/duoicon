@@ -4,60 +4,60 @@
   <img src="Assets/favicon-source.svg" width="160" alt="DuoIcon icon">
 </p>
 
-배터리, Wi-Fi, 음량 상태를 하나의 아이콘으로 보여주는 macOS 전용 메뉴바 앱입니다.
+A macOS menu bar app that shows battery, Wi-Fi, and volume status in a single icon.
 
-## 주요 기능
+## Features
 
-- 상단 아치로 배터리 잔량 표시
-- 배터리 10% 이하에서 아치를 빨간색으로 표시
-- 전원 어댑터 연결 시 아치 오른쪽 끝에 초록색 점 표시
-- 중앙에 macOS Wi-Fi 심볼 표시, 신호 세기에 따라 3단계로 변화, 연결이 끊기면 슬래시 표시
-- 하단 점 4개로 음량을 25% 단위로 표시, 음소거 시 모두 비활성화
-- 볼륨 키를 누르면 앱 아이콘 바로 아래에 음량 조절 박스 표시
-- 배터리, Wi-Fi, 사운드 시스템 설정 바로가기 제공
-- 메뉴에서 연결된 Wi-Fi 이름 표시 (macOS 위치 서비스 권한 필요)
+- Top arc shows the battery level
+- The arc turns red at 10% battery or below
+- A green dot appears at the right end of the arc while the power adapter is connected
+- The macOS Wi-Fi symbol sits in the center, changes across 3 levels with signal strength, and shows a slash when disconnected
+- Four dots at the bottom show the volume in 25% steps, and all turn off when muted
+- Pressing a volume key shows a volume control box right below the app icon
+- Shortcuts to the Battery, Wi-Fi, and Sound panes of System Settings
+- The menu shows the name of the connected Wi-Fi network (requires the macOS Location Services permission)
 
-## 상태 표시
+## Status display
 
-| 영역 | 상태 | 표시 방식 |
+| Area | State | How it is shown |
 | --- | --- | --- |
-| 상단 아치 | 배터리 | 잔량에 비례해 왼쪽부터 채움 |
-| 상단 아치 | 10% 이하 | 빨간색 |
-| 아치 오른쪽 끝 | 전원 연결 | 초록색 점 |
-| 중앙 | Wi-Fi 연결 | `wifi` 시스템 심볼, 신호 세기에 따라 1~3단계(약한 단계의 바깥 호는 흐리게) |
-| 중앙 | Wi-Fi 미연결 | `wifi.slash` 시스템 심볼 |
-| 중앙 | 음량 변경 | 2초 동안 스피커 시스템 심볼 |
-| 중앙 | 배터리 10% 이하 진입 | 3초 동안 빨간 배터리 심볼 |
-| 하단 점 | 음량 | 0~4개, 25% 단위 |
+| Top arc | Battery | Fills from the left in proportion to the charge level |
+| Top arc | 10% or below | Red |
+| Right end of the arc | Power connected | Green dot |
+| Center | Wi-Fi connected | `wifi` system symbol, 1–3 levels by signal strength (outer arcs are dimmed at weaker levels) |
+| Center | Wi-Fi disconnected | `wifi.slash` system symbol |
+| Center | Volume changed | Speaker system symbol for 2 seconds |
+| Center | Battery drops to 10% or below | Red battery symbol for 3 seconds |
+| Bottom dots | Volume | 0–4 dots, in 25% steps |
 
-중앙 심볼은 180ms 동안 페이드 전환됩니다. macOS의 **동작 줄이기**가 활성화된 경우 애니메이션을 생략합니다. Wi-Fi 신호 세기는 RSSI 기준 -60dBm 이상 3단계, -72dBm 이상 2단계, 그 미만 1단계이며 경계에서 깜빡이지 않도록 3dB 여유를 둡니다. Wi-Fi 연결 해제는 일시적인 조회 실패로 인한 깜빡임을 막기 위해 1초 이상 지속될 때 반영합니다.
+The center symbol cross-fades over 180 ms. The animation is skipped when macOS **Reduce Motion** is enabled. Wi-Fi signal strength is based on RSSI: level 3 at -60 dBm or above, level 2 at -72 dBm or above, and level 1 below that, with a 3 dB margin so it does not flicker at the boundaries. A Wi-Fi disconnection is only reflected once it has lasted at least 1 second, to avoid flicker from transient lookup failures.
 
-## 볼륨 키 HUD
+## Volume key HUD
 
-볼륨 키와 음소거 키를 누르면 macOS 기본 HUD 대신 DuoIcon 아이콘 아래에 커스텀 음량 박스가 표시됩니다.
+Pressing the volume or mute keys shows a custom volume box below the DuoIcon icon instead of the default macOS HUD.
 
-- 일반 조절 간격: `1/16`
-- `Option + Shift` 조절 간격: `1/64`
-- `Option + 볼륨 키`: macOS 사운드 설정 바로가기 동작 유지
-- 마지막 조작 후 2.5초 뒤 자동 닫힘
-- 마우스를 올리거나 슬라이더를 드래그하는 동안 열린 상태 유지
-- 등장 180ms, 퇴장 140ms 페이드 애니메이션
+- Normal step: `1/16`
+- `Option + Shift` step: `1/64`
+- `Option + volume key`: keeps the macOS shortcut that opens Sound settings
+- Closes automatically 2.5 seconds after the last interaction
+- Stays open while the pointer is over it or the slider is being dragged
+- Fades in over 180 ms and out over 140 ms
 
-볼륨 키를 가로채고 macOS 기본 HUD와 중복 표시되지 않게 하려면 손쉬운 사용 권한이 필요합니다.
+The Accessibility permission is required to intercept the volume keys and keep the default macOS HUD from appearing alongside it.
 
-1. 앱을 실행합니다.
-2. **시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**으로 이동합니다.
-3. **DuoIcon**을 허용합니다.
+1. Launch the app.
+2. Go to **System Settings → Privacy & Security → Accessibility**.
+3. Allow **DuoIcon**.
 
-권한이 없거나 현재 출력 장치가 소프트웨어 음량 조절을 지원하지 않으면 볼륨 키는 macOS 기본 동작을 유지합니다. 개발용 ad-hoc 서명은 앱을 다시 빌드할 때 권한을 다시 허용해야 할 수 있습니다.
+Without the permission, or when the current output device does not support software volume control, the volume keys keep their default macOS behavior. With ad-hoc development signing, you may have to grant the permission again after rebuilding the app.
 
-## 요구 사항
+## Requirements
 
-- macOS 13 Ventura 이상
-- Apple Silicon 또는 Intel Mac
-- 소스 빌드 시 Xcode Command Line Tools 또는 Xcode
+- macOS 13 Ventura or later
+- Apple Silicon or Intel Mac
+- Xcode Command Line Tools or Xcode, when building from source
 
-## 빌드 및 실행
+## Build and run
 
 ```bash
 git clone https://github.com/olennis/duoicon.git
@@ -66,69 +66,69 @@ sh build-app.sh
 open "dist/DuoIcon.app"
 ```
 
-앱은 Dock 아이콘 없이 메뉴바에서만 실행됩니다. 종료하려면 메뉴에서 **Quit DuoIcon**을 선택합니다.
+The app runs only in the menu bar, with no Dock icon. To quit, choose **Quit DuoIcon** from the menu.
 
-`build-app.sh`는 릴리스 바이너리와 앱 아이콘을 생성하고 앱을 로컬 ad-hoc 방식으로 서명합니다. 다른 사용자에게 배포하려면 Apple Developer ID 서명과 notarization이 필요합니다.
+`build-app.sh` builds the release binary and the app icon, then signs the app locally with an ad-hoc signature. Distributing it to other users requires Apple Developer ID signing and notarization.
 
-## 테스트
+## Testing
 
 ```bash
 swift run DuoIcon --self-test
 ```
 
-다음 항목을 검사합니다.
+It checks the following:
 
-- 음량 25% 경계값
-- 배터리 저전력 및 충전 색상
-- 중앙 알림 표시 시간과 우선순위
-- 중단 가능한 심볼 전환과 동작 줄이기
-- Wi-Fi 신호 세기 단계와 경계 여유(3dB)
-- Wi-Fi 상태 안정화
-- 볼륨 HUD 위치 및 렌더링
+- Volume 25% boundary values
+- Battery low-power and charging colors
+- Center notification duration and priority
+- Interruptible symbol transitions and Reduce Motion
+- Wi-Fi signal strength levels and the boundary margin (3 dB)
+- Wi-Fi status stabilization
+- Volume HUD position and rendering
 
-렌더링 결과는 `/tmp/duoicon-icons.png`와 `/tmp/duoicon-volume-hud.png`에 생성됩니다.
+The rendered results are written to `/tmp/duoicon-icons.png` and `/tmp/duoicon-volume-hud.png`.
 
-## 아이콘 리소스
+## Icon resources
 
 <p align="center">
   <img src="Assets/favicon.png" width="64" alt="DuoIcon favicon">
 </p>
 
-- `Assets/icon-source.png`: macOS 앱 아이콘 원본
-- `Assets/AppIcon.icns`: 앱 번들에 포함되는 macOS 아이콘
-- `Assets/favicon-source.svg`: 좌우 여백을 동일하게 맞춘 정사각형 favicon 원본
-- `Assets/favicon.png`: 흰색 배경의 32×32 PNG favicon
-- `Assets/favicon.ico`: 흰색 배경의 32×32 ICO favicon
+- `Assets/icon-source.png`: source image for the macOS app icon
+- `Assets/AppIcon.icns`: the macOS icon included in the app bundle
+- `Assets/favicon-source.svg`: square favicon source with equal left and right margins
+- `Assets/favicon.png`: 32×32 PNG favicon on a white background
+- `Assets/favicon.ico`: 32×32 ICO favicon on a white background
 
-favicon을 다시 생성하려면 릴리스 실행 파일을 빌드한 뒤 다음 명령을 실행합니다.
+To regenerate the favicons, build the release executable and then run:
 
 ```bash
 sh build-icons.sh
 ```
 
-`build-app.sh`를 실행해도 favicon이 자동으로 다시 생성됩니다.
+Running `build-app.sh` also regenerates the favicons automatically.
 
-## 프로젝트 구조
+## Project structure
 
 ```text
 duoicon/
-├── Assets/                  # 앱 아이콘 및 favicon 원본/산출물
+├── Assets/                  # App icon and favicon sources/outputs
 ├── Sources/DuoIcon/
-│   ├── main.swift           # 상태 조회, 메뉴, 동적 메뉴바 아이콘
-│   └── VolumeKeyHUD.swift   # 볼륨 키 감지 및 아이콘 하단 HUD
+│   ├── main.swift           # Status readers, menu, dynamic menu bar icon
+│   └── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
 ├── Info.plist
 ├── Package.swift
 ├── build-app.sh
 └── build-icons.sh
 ```
 
-## 알려진 제한 사항
+## Known limitations
 
-- Wi-Fi 연결 상태는 네트워크 연결 여부이며 인터넷 접속 가능 여부를 의미하지 않습니다.
-- 연결된 Wi-Fi 이름은 macOS 위치 서비스 권한을 허용해야 표시됩니다. 권한이 없으면 메뉴에 `Connected`만 표시되며, 메뉴를 처음 열 때 권한을 요청합니다. DuoIcon은 위치 좌표를 조회하지 않습니다.
-- 일부 외장 오디오 장치는 시스템 음량 속성을 제공하지 않아 음량이 0%로 표시되거나 슬라이더가 비활성화될 수 있습니다.
-- 배터리가 없는 Mac에서는 배터리 아치가 비활성 상태로 표시됩니다.
+- The Wi-Fi status reflects whether the Mac is connected to a network, not whether the internet is reachable.
+- The connected Wi-Fi name is shown only if you allow the macOS Location Services permission. Without it, the menu shows just `Connected`, and the permission is requested the first time you open the menu. DuoIcon never looks up location coordinates.
+- Some external audio devices do not expose a system volume property, so the volume may show as 0% or the slider may be disabled.
+- On a Mac without a battery, the battery arc is shown as inactive.
 
-## 라이선스
+## License
 
-별도 라이선스가 추가되기 전까지 모든 권리는 저장소 소유자에게 있습니다.
+Until a separate license is added, all rights are reserved by the repository owner.
