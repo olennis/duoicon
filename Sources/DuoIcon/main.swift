@@ -393,9 +393,12 @@ private enum StatusIcon {
         drawBatteryArc(context: context, status: battery, tone: tone)
         for (kind, opacity) in layers ?? [(center, 1)] {
         let symbolName: String
+        var variableValue: Double?
         switch kind {
         case .wifi:
             symbolName = wifi.isConnected ? "wifi" : "wifi.slash"
+            // Dim the outer arcs of the Wi-Fi symbol as the signal weakens.
+            if wifi.isConnected { variableValue = [0.2, 0.5, 1][max(1, min(wifi.bars, 3)) - 1] }
         case .volume:
             symbolName = isMuted || volume <= 0 ? "speaker.slash.fill" :
                 volume <= 0.33 ? "speaker.wave.1.fill" :
@@ -407,7 +410,8 @@ private enum StatusIcon {
         }
         context.saveGState()
         context.setAlpha(opacity)
-        drawSystemSymbol(symbolName, color: kind == .battery ? .systemRed : primaryColor(for: tone),
+        drawSystemSymbol(symbolName, variableValue: variableValue,
+                         color: kind == .battery ? .systemRed : primaryColor(for: tone),
                          in: NSRect(x: 7.8, y: 8.2, width: 12.4, height: 9))
         context.restoreGState()
         }
@@ -501,8 +505,12 @@ private enum StatusIcon {
         return Int(ceil(max(0, min(volume, 1)) * 4))
     }
 
-    private static func drawSystemSymbol(_ symbolName: String, color: NSColor, in rect: NSRect) {
-        guard let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else {
+    private static func drawSystemSymbol(_ symbolName: String, variableValue: Double? = nil,
+                                         color: NSColor, in rect: NSRect) {
+        let variable = variableValue.flatMap {
+            NSImage(systemSymbolName: symbolName, variableValue: $0, accessibilityDescription: nil)
+        }
+        guard let symbol = variable ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else {
             return
         }
 
@@ -564,9 +572,12 @@ private final class WiFiReader {
         let title: String
         let isConnected: Bool
         var networkName: String? = nil
+        /// Signal strength as 1...3 arcs while connected, 0 otherwise.
+        var bars: Int = 0
     }
 
     private var stability = WiFiStability()
+    private var lastBars: Int?
 
     func status() -> Status {
         stability.update(readStatus(), now: ProcessInfo.processInfo.systemUptime)
@@ -574,19 +585,32 @@ private final class WiFiReader {
 
     private func readStatus() -> Status {
         guard let interface = CWWiFiClient.shared().interface() else {
+            lastBars = nil
             return Status(title: "Wi-Fi unavailable", isConnected: false)
         }
         guard interface.powerOn() else {
+            lastBars = nil
             return Status(title: "Wi-Fi off", isConnected: false)
         }
         // SSIDs can be redacted by Location Services while the interface is connected.
         // interfaceMode alone is not sufficient here: macOS can leave the interface in
         // station mode briefly after it has disassociated from the access point.
         let mode = interface.interfaceMode()
-        let connected = Self.isAssociated(mode: mode, rssi: interface.rssiValue())
+        let rssi = interface.rssiValue()
+        let connected = Self.isAssociated(mode: mode, rssi: rssi)
+        lastBars = connected ? Self.bars(rssi: rssi, previous: lastBars) : nil
         let networkName = connected ? interface.ssid().flatMap { $0.isEmpty ? nil : $0 } : nil
         let title = connected ? networkName.map { "Connected: \($0)" } ?? "Connected" : "Not connected"
-        return Status(title: title, isConnected: connected, networkName: networkName)
+        return Status(title: title, isConnected: connected, networkName: networkName, bars: lastBars ?? 0)
+    }
+
+    /// Maps RSSI (dBm) to 1...3 arcs. A level only changes once the signal is 3 dB past
+    /// the boundary, so a reading hovering on a threshold does not make the icon flicker.
+    static func bars(rssi: Int, previous: Int? = nil) -> Int {
+        func level(_ value: Int) -> Int { value >= -60 ? 3 : value >= -72 ? 2 : 1 }
+        let raw = level(rssi)
+        guard let previous, raw != previous else { return raw }
+        return raw > previous ? max(previous, level(rssi - 3)) : min(previous, level(rssi + 3))
     }
 
     static func isAssociated(mode: CWInterfaceMode, rssi: Int) -> Bool {
@@ -835,6 +859,13 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(WiFiReader.isAssociated(mode: .IBSS, rssi: -55))
     precondition(!WiFiReader.isAssociated(mode: .station, rssi: 0))
     precondition(!WiFiReader.isAssociated(mode: .none, rssi: -55))
+    precondition(WiFiReader.bars(rssi: -45) == 3 && WiFiReader.bars(rssi: -60) == 3)
+    precondition(WiFiReader.bars(rssi: -61) == 2 && WiFiReader.bars(rssi: -72) == 2)
+    precondition(WiFiReader.bars(rssi: -73) == 1 && WiFiReader.bars(rssi: -95) == 1)
+    precondition(WiFiReader.bars(rssi: -59, previous: 2) == 2 && WiFiReader.bars(rssi: -57, previous: 2) == 3)
+    precondition(WiFiReader.bars(rssi: -62, previous: 3) == 3 && WiFiReader.bars(rssi: -64, previous: 3) == 2)
+    precondition(WiFiReader.bars(rssi: -74, previous: 2) == 2 && WiFiReader.bars(rssi: -76, previous: 2) == 1)
+    precondition(WiFiReader.bars(rssi: -50, previous: 1) == 3 && WiFiReader.bars(rssi: -90, previous: 3) == 1)
     precondition(wifiStability.update(online, now: 0).isConnected)
     precondition(wifiStability.update(offline, now: 1).isConnected)
     precondition(wifiStability.update(offline, now: 1.5).isConnected)
@@ -869,7 +900,7 @@ if CommandLine.arguments.contains("--self-test") {
     NSRect(x: 0, y: 0, width: 720, height: 240).fill()
     for (index, percent) in [100, 65, 10, 5, 0, -1].enumerated() {
         let icon = StatusIcon.make(battery: batteryFixture(percent, charging: index == 3, pluggedIn: index == 0),
-                                   wifi: .init(title: "Fixture", isConnected: index < 4),
+                                   wifi: .init(title: "Fixture", isConnected: index < 4, bars: [3, 2, 2, 1, 0, 0][index]),
                                    volume: Float32(5 - index) / 5, isMuted: index == 5,
                                    appearance: NSAppearance(named: .aqua)!,
                                    center: index == 1 || index == 5 ? .volume : index == 2 ? .battery : .wifi)
@@ -879,7 +910,7 @@ if CommandLine.arguments.contains("--self-test") {
     sheet.unlockFocus()
     let bitmap = NSBitmapImageRep(data: sheet.tiffRepresentation!)!
     try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "/tmp/duoicon-icons.png"))
-    print("PASS: volume boundaries, battery colors, AirPods priority, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
+    print("PASS: volume boundaries, Wi-Fi signal levels, battery colors, AirPods priority, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
     print("Live state: \(BatteryReader().status().summary), \(WiFiReader().status().title), volume \(VolumeController().outputVolume)")
     exit(0)
 }
