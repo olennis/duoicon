@@ -115,7 +115,9 @@ duoicon/
 ├── Assets/                  # App icon and favicon sources/outputs
 ├── Sources/DuoIcon/
 │   ├── main.swift           # Status readers, menu, dynamic menu bar icon
-│   └── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
+│   ├── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
+│   ├── Localization.swift   # macOS language selection and string lookup
+│   └── Resources/          # English/Korean strings and icon references
 ├── Info.plist
 ├── Package.swift
 ├── build-app.sh
@@ -132,3 +134,15 @@ duoicon/
 ## License
 
 Until a separate license is added, all rights are reserved by the repository owner.
+
+## Interface language
+
+The app follows your Mac’s preferred language and supports English and Korean. Other languages fall back to English. You can also choose a language for this app in **System Settings → General → Language & Region → Applications**. Relaunch the app after changing its language.
+
+To verify the localization resources and language selection after a release build:
+
+```sh
+python3 scripts/check-localization.py
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for changes.
