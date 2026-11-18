@@ -1,11 +1,13 @@
 import AppKit
 import AudioToolbox
+import Combine
 import CoreAudio
 import CoreLocation
 import CoreWLAN
 import IOKit.ps
+import SwiftUI
 
-private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLocationManagerDelegate {
+private final class AppController: NSObject, NSApplicationDelegate, CLLocationManagerDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 36)
     private let volume = VolumeController()
     private let battery = BatteryReader()
@@ -13,16 +15,14 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     private let locationManager = CLLocationManager()
     private var didRequestWiFiNameAccess = false
     private let volumeKeys = VolumeKeyMonitor()
-    private let volumeHUD = VolumeKeyHUD()
+    private let model = PanelModel()
+    private lazy var panel = StatusPanelController(model: model)
 
     private var refreshTimer: Timer?
     private var centerNotice = CenterNotice()
     private var transition = CenterTransition()
     private var animationTimer: Timer?
     private var renderIcon: (() -> Void)?
-    private weak var volumeSlider: NSSlider?
-    private weak var volumeLabel: NSTextField?
-    private weak var muteButton: NSButton?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -46,20 +46,14 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.updateStatusIcon()
-                self.volumeHUD.show(below: button)
+                self.panel.showIsland(below: button)
             }
             return true
         }
-        volumeHUD.onVolume = { [weak self] value in
-            guard let self else { return }
-            self.volume.outputVolume = value
-            if value > 0 && self.volume.isMuted { self.volume.isMuted = false }
-            self.updateStatusIcon()
-        }
-        volumeHUD.onMute = { [weak self] in self?.toggleMute() }
+        bindPanel()
         volumeKeys.start()
         configureStatusItem()
-        refreshMenu()
+        refresh()
 
         let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.updateStatusIcon()
@@ -78,28 +72,55 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
     }
 
     private func configureStatusItem() {
-        statusItem.button?.toolTip = L10n.text("Wi-Fi, Volume, Battery")
-        statusItem.button?.imagePosition = .imageOnly
+        guard let button = statusItem.button else { return }
+        button.toolTip = L10n.text("Wi-Fi, Volume, Battery")
+        button.imagePosition = .imageOnly
+        button.target = self
+        button.action = #selector(statusItemClicked(_:))
+        button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         updateStatusIcon()
     }
 
-    @objc private func refreshMenu() {
-        updateStatusIcon()
-        statusItem.menu = buildMenu()
-    }
-
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        volumeHUD.hide()
-        requestWiFiNameAccessIfNeeded()
-        menu.removeAllItems()
-        for item in buildMenu().items {
-            item.menu?.removeItem(item)
-            menu.addItem(item)
+    private func bindPanel() {
+        model.onVolume = { [weak self] value in self?.setVolume(value) }
+        model.onToggleMute = { [weak self] in self?.toggleMute() }
+        model.onOpenSettings = { [weak self] section in
+            self?.panel.close()
+            switch section {
+            case .volume: self?.openSoundSettings()
+            case .wifi: self?.openWiFiSettings()
+            case .battery: self?.openBatterySettings()
+            }
         }
+        model.onRequestAccess = { [weak self] in self?.enableVolumeKeyHUD() }
+        model.onRefresh = { [weak self] in self?.refresh() }
+        model.onQuit = { NSApp.terminate(nil) }
+        model.onExpandIsland = { [weak self] in self?.panel.expandIsland() }
+    }
+
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseDown || event?.modifierFlags.contains(.control) == true {
+            // Right click keeps a plain menu as a fallback way to refresh or quit.
+            panel.close()
+            statusItem.menu = buildContextMenu()
+            sender.performClick(nil)
+            statusItem.menu = nil
+            return
+        }
+        if !panel.isPanelOpen {
+            updateStatusIcon()
+            requestWiFiNameAccessIfNeeded()
+        }
+        panel.toggle(below: sender)
+    }
+
+    @objc private func refresh() {
+        updateStatusIcon()
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        refreshMenu()
+        refresh()
     }
 
     private func requestWiFiNameAccessIfNeeded() {
@@ -156,115 +177,46 @@ private final class AppController: NSObject, NSApplicationDelegate, NSMenuDelega
             RunLoop.main.add(timer, forMode: .common)
             animationTimer = timer
         }
-        volumeSlider?.doubleValue = Double(outputVolume)
-        volumeSlider?.isEnabled = volume.canSetVolume
-        muteButton?.isEnabled = volume.canSetMute
-        volumeLabel?.stringValue = isMuted ? L10n.text("Muted") : "\(Int(outputVolume * 100))%"
-        muteButton?.image = NSImage(systemSymbolName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: L10n.text("Mute"))
-        volumeHUD.update(volume: outputVolume, muted: isMuted,
-                         canSetVolume: volume.canSetVolume, canSetMute: volume.canSetMute)
+        let locationDenied = [.denied, .restricted].contains(locationManager.authorizationStatus)
+        model.apply(PanelModel.Snapshot(
+            volume: outputVolume, isMuted: isMuted,
+            canSetVolume: volume.canSetVolume, canSetMute: volume.canSetMute,
+            batteryPercent: batteryStatus.percentage, isCharging: batteryStatus.isCharging,
+            isPluggedIn: batteryStatus.isPluggedIn,
+            batterySummary: batteryStatus.summary, powerSource: batteryStatus.powerSource,
+            wifiConnected: wifiStatus.isConnected, wifiTitle: wifiStatus.title, wifiBars: wifiStatus.bars,
+            wifiNeedsLocation: wifiStatus.isConnected && wifiStatus.networkName == nil && locationDenied,
+            volumeHUDActive: volumeKeys.isActive
+        ))
         let summary = L10n.format("%@, %@, Volume %d%%", batteryStatus.summary, wifiStatus.title, isMuted ? 0 : Int(outputVolume * 100))
         statusItem.button?.toolTip = summary
         statusItem.button?.setAccessibilityLabel(summary)
     }
 
-    private func buildMenu() -> NSMenu {
+    private func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.delegate = self
-
-        addVolumeSection(to: menu)
         if !volumeKeys.isActive {
             let access = NSMenuItem(title: L10n.text("Enable Icon-Anchored Volume HUD..."), action: #selector(enableVolumeKeyHUD), keyEquivalent: "")
             access.target = self
             menu.addItem(access)
-            menu.addItem(disabledItem(L10n.text("Accessibility permission required")))
+            let note = NSMenuItem(title: L10n.text("Accessibility permission required"), action: nil, keyEquivalent: "")
+            note.isEnabled = false
+            menu.addItem(note)
+            menu.addItem(.separator())
         }
-        menu.addItem(.separator())
-        addWiFiSection(to: menu)
-        menu.addItem(.separator())
-        addBatterySection(to: menu)
-        menu.addItem(.separator())
-
-        let refresh = NSMenuItem(title: L10n.text("Refresh"), action: #selector(refreshMenu), keyEquivalent: "r")
+        let refresh = NSMenuItem(title: L10n.text("Refresh"), action: #selector(refresh), keyEquivalent: "r")
         refresh.target = self
         menu.addItem(refresh)
-
         let quit = NSMenuItem(title: L10n.text("Quit DuoIcon"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
-
         return menu
     }
 
-    private func addWiFiSection(to menu: NSMenu) {
-        let status = wifi.status()
-        menu.addItem(disabledItem(L10n.text("Wi-Fi")))
-        menu.addItem(disabledItem(status.title))
-
-        if status.isConnected && status.networkName == nil &&
-            (locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted) {
-            menu.addItem(disabledItem(L10n.text("Allow Location access to show Wi-Fi name")))
-        }
-
-        let settings = NSMenuItem(title: L10n.text("Open Wi-Fi Settings"), action: #selector(openWiFiSettings), keyEquivalent: "")
-        settings.target = self
-        menu.addItem(settings)
-    }
-
-    private func addVolumeSection(to menu: NSMenu) {
-        menu.addItem(disabledItem(L10n.text("Volume")))
-
-        let row = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 38))
-        let mute = NSButton(image: NSImage(systemSymbolName: volume.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill", accessibilityDescription: L10n.text("Mute"))!, target: self, action: #selector(toggleMute))
-        mute.frame = NSRect(x: 12, y: 5, width: 28, height: 28)
-        mute.isBordered = false
-        mute.toolTip = L10n.text("Mute / Unmute")
-        row.addSubview(mute)
-        muteButton = mute
-        let slider = NSSlider(value: Double(volume.outputVolume), minValue: 0, maxValue: 1,
-                              target: self, action: #selector(changeVolume(_:)))
-        slider.frame = NSRect(x: 48, y: 7, width: 158, height: 24)
-        slider.isContinuous = true
-        slider.setAccessibilityLabel(L10n.text("Output volume"))
-        slider.isEnabled = volume.canSetVolume
-        mute.isEnabled = volume.canSetMute
-        row.addSubview(slider)
-        volumeSlider = slider
-        let label = NSTextField(labelWithString: volume.isMuted ? L10n.text("Muted") : "\(Int(volume.outputVolume * 100))%")
-        label.frame = NSRect(x: 212, y: 11, width: 56, height: 17)
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        label.alignment = .right
-        row.addSubview(label)
-        volumeLabel = label
-        let item = NSMenuItem()
-        item.view = row
-        menu.addItem(item)
-
-        let settings = NSMenuItem(title: L10n.text("Open Sound Settings"), action: #selector(openSoundSettings), keyEquivalent: "")
-        settings.target = self
-        menu.addItem(settings)
-    }
-
-    private func addBatterySection(to menu: NSMenu) {
-        let status = battery.status()
-        menu.addItem(disabledItem(L10n.text("Battery")))
-        menu.addItem(disabledItem(status.summary))
-        menu.addItem(disabledItem(status.powerSource))
-
-        let settings = NSMenuItem(title: L10n.text("Open Battery Settings"), action: #selector(openBatterySettings), keyEquivalent: "")
-        settings.target = self
-        menu.addItem(settings)
-    }
-
-    private func disabledItem(_ title: String) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        item.isEnabled = false
-        return item
-    }
-
-    @objc private func changeVolume(_ sender: NSSlider) {
-        volume.outputVolume = Float32(sender.doubleValue)
-        if sender.doubleValue > 0 && volume.isMuted { volume.isMuted = false }
+    private func setVolume(_ value: Float) {
+        model.setLocalVolume(value)
+        volume.outputVolume = value
+        if value > 0 && volume.isMuted { volume.isMuted = false }
         updateStatusIcon()
     }
 
@@ -830,14 +782,88 @@ if CommandLine.arguments.contains("--self-test") {
     precondition(StatusIcon.batteryColor(for: batteryFixture(5, charging: true), tone: .light) == .systemGreen)
     var notice = CenterNotice()
     let anchor = NSRect(x: 700, y: 876, width: 36, height: 24)
-    let hudFrame = VolumeKeyHUD.frame(below: anchor, screen: NSRect(x: 0, y: 0, width: 1440, height: 900))
-    precondition(hudFrame.midX == anchor.midX && hudFrame.maxY == anchor.minY - 8)
-    let edgeFrame = VolumeKeyHUD.frame(below: NSRect(x: -25, y: 876, width: 24, height: 24),
-                                       screen: NSRect(x: -1440, y: 0, width: 1440, height: 900))
-    precondition(edgeFrame.maxX <= -8 && edgeFrame.minX >= -1432)
-    let hudPreview = VolumeKeyHUD()
-    hudPreview.update(volume: 0.625, muted: false, canSetVolume: true, canSetMute: true)
-    try hudPreview.writePreview(to: URL(fileURLWithPath: "/tmp/duoicon-volume-hud.png"))
+    let panelFrame = StatusPanelController.frame(height: 400, below: anchor,
+                                                 screen: NSRect(x: 0, y: 0, width: 1440, height: 900))
+    precondition(panelFrame.midX == anchor.midX && panelFrame.maxY == anchor.minY && panelFrame.height == 400)
+    // The surface (not the transparent margin) stays 8 pt inside the screen edge.
+    let edgeFrame = StatusPanelController.frame(height: 200, below: NSRect(x: -25, y: 876, width: 24, height: 24),
+                                                screen: NSRect(x: -1440, y: 0, width: 1440, height: 900))
+    let edgeSurface = edgeFrame.insetBy(dx: SurfaceView.margin.leading, dy: 0)
+    precondition(edgeSurface.maxX <= -8 && edgeSurface.minX >= -1432)
+    let leftFrame = StatusPanelController.frame(height: 200, below: NSRect(x: 4, y: 876, width: 24, height: 24),
+                                                screen: NSRect(x: 0, y: 0, width: 1440, height: 900))
+    precondition(leftFrame.minX + SurfaceView.margin.leading == 8)
+    precondition(StatusPanelController.windowHeight(forSurface: 48) == 48 + SurfaceView.margin.top + SurfaceView.margin.bottom)
+
+    let panelModel = PanelModel()
+    var panelState = PanelModel.Snapshot()
+    panelState.volume = 0.5
+    panelModel.apply(panelState)
+    precondition(panelModel.snapshot.volume == 0.5 && panelModel.showsAccessPrompt)
+    panelModel.isDraggingVolume = true
+    panelState.volume = 0.2
+    panelModel.apply(panelState)
+    precondition(panelModel.snapshot.volume == 0.5, "Timer readings must not move a dragged slider")
+    panelModel.isDraggingVolume = false
+    panelModel.apply(panelState)
+    precondition(panelModel.snapshot.volume == 0.2)
+    var panelChanges = 0
+    let panelWatch = panelModel.objectWillChange.sink { panelChanges += 1 }
+    panelModel.apply(panelState)
+    precondition(panelChanges == 0, "Identical readings must not redraw the panel")
+    panelWatch.cancel()
+    panelState.volumeHUDActive = true
+    panelModel.apply(panelState)
+    precondition(!panelModel.showsAccessPrompt)
+    panelModel.setLocalVolume(0.75)
+    precondition(panelModel.snapshot.volume == 0.75)
+    panelModel.setMode(.island)
+    panelModel.setMode(.closed)
+    precondition(panelModel.shape == .island, "A closing surface keeps its last shape")
+    for (value, muted, symbol) in [(Float(0), false, "speaker.slash.fill"), (0.3, false, "speaker.wave.1.fill"),
+                                   (0.5, false, "speaker.wave.2.fill"), (0.9, false, "speaker.wave.3.fill"),
+                                   (0.9, true, "speaker.slash.fill")] {
+        precondition(speakerSymbol(volume: value, muted: muted) == symbol)
+    }
+
+    // Render previews for a visual check: full panel, island, and a low-battery panel.
+    MainActor.assumeIsolated {
+        @MainActor func render(_ model: PanelModel, to path: String, dark: Bool) {
+            let renderer = ImageRenderer(content: SurfaceView(model: model)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .background(dark ? Color(white: 0.18) : Color(white: 0.86)))
+            renderer.scale = 2
+            guard let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+                  let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else {
+                fatalError("Could not render \(path)")
+            }
+            try? png.write(to: URL(fileURLWithPath: path))
+        }
+        var sample = PanelModel.Snapshot(
+            volume: 0.625, isMuted: false, batteryPercent: 78, isPluggedIn: false,
+            batterySummary: "78% - " + L10n.text("Not charging"), powerSource: L10n.text("Battery Power"),
+            wifiConnected: true, wifiTitle: L10n.format("Connected: %@", "Studio-5G"), wifiBars: 2)
+        let full = PanelModel()
+        full.apply(sample)
+        full.expanded = .wifi
+        full.setMode(.panel)
+        render(full, to: "/tmp/duoicon-panel.png", dark: false)
+        render(full, to: "/tmp/duoicon-panel-dark.png", dark: true)
+        let island = PanelModel()
+        sample.volumeHUDActive = true
+        island.apply(sample)
+        island.setMode(.island)
+        render(island, to: "/tmp/duoicon-island.png", dark: false)
+        let low = PanelModel()
+        sample.batteryPercent = 8
+        sample.isMuted = true
+        sample.wifiConnected = false
+        sample.wifiTitle = L10n.text("Not connected")
+        low.apply(sample)
+        low.expanded = .battery
+        low.setMode(.panel)
+        render(low, to: "/tmp/duoicon-panel-low.png", dark: false)
+    }
     var fade = CenterTransition()
     fade.set(.wifi, now: 0, reducedMotion: false)
     precondition(!fade.isAnimating(at: 0))
@@ -910,7 +936,7 @@ if CommandLine.arguments.contains("--self-test") {
     sheet.unlockFocus()
     let bitmap = NSBitmapImageRep(data: sheet.tiffRepresentation!)!
     try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "/tmp/duoicon-icons.png"))
-    print("PASS: volume boundaries, Wi-Fi signal levels, battery colors, AirPods priority, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, HUD placement and rendering")
+    print("PASS: volume boundaries, Wi-Fi signal levels, battery colors, AirPods priority, notice timing, interruptible transition, reduced motion, system symbols, icon rendering, panel placement, panel state, panel rendering")
     print("Live state: \(BatteryReader().status().summary), \(WiFiReader().status().title), volume \(VolumeController().outputVolume)")
     exit(0)
 }

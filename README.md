@@ -13,9 +13,10 @@ A macOS menu bar app that shows battery, Wi-Fi, and volume status in a single ic
 - A green dot appears at the right end of the arc while the power adapter is connected
 - The macOS Wi-Fi symbol sits in the center, changes across 3 levels with signal strength, and shows a slash when disconnected
 - Four dots at the bottom show the volume in 25% steps, and all turn off when muted
-- Pressing a volume key shows a volume control box right below the app icon
+- Clicking the icon opens a panel with volume, Wi-Fi, and battery cards
+- Pressing a volume key shows a compact volume island right below the app icon; clicking it expands into the full panel
 - Shortcuts to the Battery, Wi-Fi, and Sound panes of System Settings
-- The menu shows the name of the connected Wi-Fi network (requires the macOS Location Services permission)
+- The panel shows the name of the connected Wi-Fi network (requires the macOS Location Services permission)
 
 ## Status display
 
@@ -32,16 +33,28 @@ A macOS menu bar app that shows battery, Wi-Fi, and volume status in a single ic
 
 The center symbol cross-fades over 180 ms. The animation is skipped when macOS **Reduce Motion** is enabled. Wi-Fi signal strength is based on RSSI: level 3 at -60 dBm or above, level 2 at -72 dBm or above, and level 1 below that, with a 3 dB margin so it does not flicker at the boundaries. A Wi-Fi disconnection is only reflected once it has lasted at least 1 second, to avoid flicker from transient lookup failures.
 
+## Panel
+
+Clicking the icon opens a panel below it. Right-clicking (or Control-clicking) shows a short menu with **Refresh** and **Quit DuoIcon** instead.
+
+- **Volume**: mute button and a notched slider. Dragging follows the pointer; releasing snaps to the nearest `1/16` (`1/64` with `Shift`). Arrow keys work when the slider has focus.
+- **Wi-Fi**: network name, signal level, and a shortcut to Wi-Fi settings.
+- **Battery**: charge level on the same arc as the menu bar icon, power source, and a shortcut to Battery settings.
+- Each card expands to show details. One card is open at a time.
+- **Refresh** (`⌘R`) re-reads every status. **Quit** needs a 1-second press so a stray click cannot quit; `⌘Q` quits at once.
+- The panel closes on a click outside it, `Esc`, `⌘W`, or another click on the icon.
+- Transitions use springs and are skipped when macOS **Reduce Motion** is on.
+- While Accessibility access is missing, the panel shows a card explaining what the volume HUD needs, with **Allow Access** and **Later**.
+
 ## Volume key HUD
 
-Pressing the volume or mute keys shows a custom volume box below the DuoIcon icon instead of the default macOS HUD.
+Pressing the volume or mute keys shows a compact volume island below the DuoIcon icon instead of the default macOS HUD. Clicking the island expands it into the full panel. If the panel is already open, its slider updates instead.
 
 - Normal step: `1/16`
 - `Option + Shift` step: `1/64`
 - `Option + volume key`: keeps the macOS shortcut that opens Sound settings
 - Closes automatically 2.5 seconds after the last interaction
-- Stays open while the pointer is over it or the slider is being dragged
-- Fades in over 180 ms and out over 140 ms
+- Stays open while the pointer is over it
 
 The Accessibility permission is required to intercept the volume keys and keep the default macOS HUD from appearing alongside it.
 
@@ -66,7 +79,7 @@ sh build-app.sh
 open "dist/DuoIcon.app"
 ```
 
-The app runs only in the menu bar, with no Dock icon. To quit, choose **Quit DuoIcon** from the menu.
+The app runs only in the menu bar, with no Dock icon. To quit, hold **Hold to Quit** in the panel, press `⌘Q` while the panel is open, or right-click the icon and choose **Quit DuoIcon**.
 
 `build-app.sh` builds the release binary and the app icon, then signs the app locally with an ad-hoc signature. Distributing it to other users requires Apple Developer ID signing and notarization.
 
@@ -84,9 +97,11 @@ It checks the following:
 - Interruptible symbol transitions and Reduce Motion
 - Wi-Fi signal strength levels and the boundary margin (3 dB)
 - Wi-Fi status stabilization
-- Volume HUD position and rendering
+- Panel position, including screen edges
+- Panel state: slider readings ignored while dragging, no redraw for identical readings, Accessibility card visibility
+- Panel and island rendering
 
-The rendered results are written to `/tmp/duoicon-icons.png` and `/tmp/duoicon-volume-hud.png`.
+The rendered results are written to `/tmp/duoicon-icons.png`, `/tmp/duoicon-panel.png`, `/tmp/duoicon-panel-dark.png`, `/tmp/duoicon-panel-low.png`, and `/tmp/duoicon-island.png`.
 
 ## Icon resources
 
@@ -114,8 +129,11 @@ Running `build-app.sh` also regenerates the favicons automatically.
 duoicon/
 ├── Assets/                  # App icon and favicon sources/outputs
 ├── Sources/DuoIcon/
-│   ├── main.swift           # Status readers, menu, dynamic menu bar icon
-│   ├── VolumeKeyHUD.swift   # Volume key detection and the HUD below the icon
+│   ├── main.swift           # Status readers, app controller, dynamic menu bar icon
+│   ├── StatusPanel.swift    # Panel window: placement, opening, closing, island lifetime
+│   ├── PanelModel.swift     # Panel display state and actions
+│   ├── PanelView.swift      # SwiftUI panel, island, and controls
+│   ├── VolumeKeyMonitor.swift # Volume key detection
 │   ├── Localization.swift   # macOS language selection and string lookup
 │   └── Resources/          # English/Korean strings and icon references
 ├── Info.plist
@@ -127,7 +145,7 @@ duoicon/
 ## Known limitations
 
 - The Wi-Fi status reflects whether the Mac is connected to a network, not whether the internet is reachable.
-- The connected Wi-Fi name is shown only if you allow the macOS Location Services permission. Without it, the menu shows just `Connected`, and the permission is requested the first time you open the menu. DuoIcon never looks up location coordinates.
+- The connected Wi-Fi name is shown only if you allow the macOS Location Services permission. Without it, the panel shows just `Connected`, and the permission is requested the first time you open the panel. DuoIcon never looks up location coordinates.
 - Some external audio devices do not expose a system volume property, so the volume may show as 0% or the slider may be disabled.
 - On a Mac without a battery, the battery arc is shown as inactive.
 

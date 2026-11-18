@@ -17,10 +17,12 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AudioToolbox"),
+                .linkedFramework("Combine"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreLocation"),
                 .linkedFramework("CoreWLAN"),
-                .linkedFramework("IOKit")
+                .linkedFramework("IOKit"),
+                .linkedFramework("SwiftUI")
             ]
         )
     ]

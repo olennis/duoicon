@@ -30,3 +30,21 @@
 "Wi-Fi off" = "Wi-Fi 꺼짐";
 "Wi-Fi unavailable" = "Wi-Fi 사용 불가";
 "Wi-Fi, Volume, Battery" = "Wi-Fi, 음량, 배터리";
+
+// Status panel
+"Allow Access" = "권한 허용";
+"Allowed" = "허용됨";
+"Collapsed" = "접힘";
+"Expanded" = "펼쳐짐";
+"Hold to Quit" = "길게 눌러 종료";
+"Keep holding" = "계속 누르세요";
+"Later" = "나중에";
+"Press a volume key to show volume controls right below this icon. Requires Accessibility permission." = "음량 키를 누르면 이 아이콘 바로 아래에 음량 조절이 뜹니다. 손쉬운 사용 권한이 필요합니다.";
+"Refreshing" = "새로 고치는 중";
+"Signal strength %d of 3" = "신호 세기 3단계 중 %d";
+"Updated" = "업데이트됨";
+"Volume HUD Below the Icon" = "아이콘 아래 음량 HUD";
+"Volume key HUD off" = "음량 키 HUD 꺼짐";
+"Volume key HUD on" = "음량 키 HUD 켜짐";
+"Waiting for permission…" = "허용 대기 중…";
+"⌥⇧ + volume keys: 1/64 steps" = "⌥⇧ + 음량 키: 1/64 단계";

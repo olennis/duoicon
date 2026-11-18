@@ -30,3 +30,21 @@
 "Wi-Fi off" = "Wi-Fi off";
 "Wi-Fi unavailable" = "Wi-Fi unavailable";
 "Wi-Fi, Volume, Battery" = "Wi-Fi, Volume, Battery";
+
+// Status panel
+"Allow Access" = "Allow Access";
+"Allowed" = "Allowed";
+"Collapsed" = "Collapsed";
+"Expanded" = "Expanded";
+"Hold to Quit" = "Hold to Quit";
+"Keep holding" = "Keep holding";
+"Later" = "Later";
+"Press a volume key to show volume controls right below this icon. Requires Accessibility permission." = "Press a volume key to show volume controls right below this icon. Requires Accessibility permission.";
+"Refreshing" = "Refreshing";
+"Signal strength %d of 3" = "Signal strength %d of 3";
+"Updated" = "Updated";
+"Volume HUD Below the Icon" = "Volume HUD Below the Icon";
+"Volume key HUD off" = "Volume key HUD off";
+"Volume key HUD on" = "Volume key HUD on";
+"Waiting for permission…" = "Waiting for permission…";
+"⌥⇧ + volume keys: 1/64 steps" = "⌥⇧ + volume keys: 1/64 steps";
