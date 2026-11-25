@@ -241,8 +241,10 @@ final class StatusPanelController: NSObject, NSWindowDelegate {
             guard let self else { return event }
             if event.window === self.panel {
                 // A click in the transparent margin around the surface counts as outside.
+                // Until the surface has reported its height, the rect is unknown, so
+                // never treat a click in our own window as outside.
                 let point = self.panel.convertPoint(toScreen: event.locationInWindow)
-                if !self.surfaceRectOnScreen.contains(point) { self.close() }
+                if self.surfaceHeight > 0 && !self.surfaceRectOnScreen.contains(point) { self.close() }
             } else if event.window !== self.anchor?.window {
                 self.close()
             }

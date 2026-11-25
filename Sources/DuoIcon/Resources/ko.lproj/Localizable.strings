@@ -48,3 +48,17 @@
 "Volume key HUD on" = "음량 키 HUD 켜짐";
 "Waiting for permission…" = "허용 대기 중…";
 "⌥⇧ + volume keys: 1/64 steps" = "⌥⇧ + 음량 키: 1/64 단계";
+
+// Wi-Fi networks and Low Power Mode
+"Allow Location access to list Wi-Fi networks" = "Wi-Fi 목록을 보려면 위치 접근을 허용하세요";
+"Couldn't join %@" = "%@에 연결할 수 없음";
+"Couldn't join. Check the password." = "연결할 수 없습니다. 암호를 확인하세요.";
+"Couldn't scan for networks" = "네트워크를 검색할 수 없음";
+"Join" = "연결";
+"Low Power Mode" = "저전력 모드";
+"Networks" = "네트워크";
+"No networks found" = "네트워크를 찾을 수 없음";
+"Password" = "암호";
+"Requires an administrator password" = "관리자 암호 필요";
+"Scan Again" = "다시 검색";
+"Secured" = "보안됨";

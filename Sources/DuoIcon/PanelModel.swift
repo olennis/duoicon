@@ -6,6 +6,16 @@ final class PanelModel: ObservableObject {
     enum Mode: Equatable { case closed, island, panel }
     enum Section: Equatable { case volume, wifi, battery }
     enum AccessRequest: Equatable { case idle, waiting, granted }
+    enum WiFiScan: Equatable { case idle, scanning, done, needsLocation, failed }
+
+    struct WiFiNetwork: Identifiable, Equatable {
+        var id: String { ssid }
+        let ssid: String
+        let bars: Int
+        let isSecure: Bool
+        let isKnown: Bool
+        let isCurrent: Bool
+    }
 
     struct Snapshot: Equatable {
         var volume: Float = 0
@@ -22,6 +32,7 @@ final class PanelModel: ObservableObject {
         var wifiBars = 0
         var wifiNeedsLocation = false
         var volumeHUDActive = false
+        var lowPowerMode = false
     }
 
     @Published private(set) var snapshot = Snapshot()
@@ -31,6 +42,14 @@ final class PanelModel: ObservableObject {
     @Published var expanded: Section?
     @Published var accessPromptDismissed = false
     @Published var accessRequest: AccessRequest = .idle
+    @Published var wifiNetworks: [WiFiNetwork] = []
+    @Published var wifiScan: WiFiScan = .idle
+    /// SSID being joined right now.
+    @Published var wifiJoining: String?
+    /// SSID whose password field is showing.
+    @Published var wifiPasswordPrompt: String?
+    @Published var wifiError: String?
+    @Published var lowPowerBusy = false
 
     /// While the user drags the slider, timer readings must not move the thumb.
     var isDraggingVolume = false
@@ -42,6 +61,9 @@ final class PanelModel: ObservableObject {
     var onRefresh: () -> Void = {}
     var onQuit: () -> Void = {}
     var onExpandIsland: () -> Void = {}
+    var onScanWiFi: () -> Void = {}
+    var onJoinWiFi: (WiFiNetwork, String?) -> Void = { _, _ in }
+    var onSetLowPower: (Bool) -> Void = { _ in }
 
     var showsAccessPrompt: Bool {
         (!snapshot.volumeHUDActive || accessRequest == .granted) && !accessPromptDismissed
@@ -84,5 +106,11 @@ final class PanelModel: ObservableObject {
 
     func toggle(_ section: Section) {
         expanded = expanded == section ? nil : section
+        if expanded == .wifi {
+            onScanWiFi()
+        } else {
+            wifiPasswordPrompt = nil
+            wifiError = nil
+        }
     }
 }

@@ -11,11 +11,6 @@ enum Motion {
     }
 }
 
-struct SurfaceHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 /// One surface that is hidden, a compact volume island, or the full panel.
 /// Switching between island and panel morphs the same rounded shape.
 struct SurfaceView: View {
@@ -46,9 +41,9 @@ struct SurfaceView: View {
             .background(.regularMaterial, in: shape)
             .clipShape(shape)
             .overlay(shape.strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
-            .background(GeometryReader { proxy in
-                Color.clear.preference(key: SurfaceHeightKey.self, value: proxy.size.height)
-            })
+            // Report the surface height straight to the controller; it sizes the
+            // window and hit-tests clicks with it.
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onHeight($0) }
             .shadow(color: .black.opacity(0.26), radius: 16, y: 10)
             .scaleEffect(model.mode == .closed ? 0.88 : 1, anchor: .top)
             .opacity(model.mode == .closed ? 0 : 1)
@@ -57,7 +52,6 @@ struct SurfaceView: View {
         .padding(Self.margin)
         .frame(width: Self.windowWidth)
         .frame(maxHeight: .infinity, alignment: .top)
-        .onPreferenceChange(SurfaceHeightKey.self) { onHeight($0) }
         .animation(Motion.spring(reduceMotion), value: model.mode)
         .animation(Motion.spring(reduceMotion), value: model.shape)
         .animation(Motion.spring(reduceMotion), value: model.expanded)
@@ -264,6 +258,7 @@ private struct WiFiCard: View {
                 Text(L10n.text("Allow Location access to show Wi-Fi name"))
                     .fixedSize(horizontal: false, vertical: true)
             }
+            WiFiNetworkList(model: model)
             RollLink(title: L10n.text("Open Wi-Fi Settings")) { model.onOpenSettings(.wifi) }
         }
     }
@@ -304,8 +299,176 @@ private struct BatteryCard: View {
             EmptyView()
         } details: {
             Text(s.batterySummary)
+            LowPowerRow(model: model)
             RollLink(title: L10n.text("Open Battery Settings")) { model.onOpenSettings(.battery) }
         }
+    }
+}
+
+/// Nearby networks inside the expanded Wi-Fi card. Tapping one joins it; a
+/// secured network the Mac has not joined before asks for its password inline.
+private struct WiFiNetworkList: View {
+    @ObservedObject var model: PanelModel
+    static let limit = 8
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(L10n.text("Networks")).font(.system(size: 11, weight: .semibold))
+                Spacer(minLength: 4)
+                if model.wifiScan == .scanning {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Button(action: model.onScanWiFi) {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .help(L10n.text("Scan Again"))
+                    .accessibilityLabel(L10n.text("Scan Again"))
+                }
+            }
+            .frame(height: 18)
+            .padding(.trailing, 6)
+
+            switch model.wifiScan {
+            case .failed:
+                Text(L10n.text("Couldn't scan for networks"))
+            case .needsLocation:
+                Text(L10n.text("Allow Location access to list Wi-Fi networks"))
+                    .fixedSize(horizontal: false, vertical: true)
+            case .done where model.wifiNetworks.isEmpty:
+                Text(L10n.text("No networks found"))
+            default:
+                EmptyView()
+            }
+
+            ForEach(model.wifiNetworks.prefix(Self.limit)) { network in
+                NetworkRow(network: network, joining: model.wifiJoining == network.ssid,
+                           busy: model.wifiJoining != nil) {
+                    if network.isSecure && !network.isKnown {
+                        model.wifiError = nil
+                        model.wifiPasswordPrompt = network.ssid
+                    } else {
+                        model.onJoinWiFi(network, nil)
+                    }
+                }
+                .padding(.leading, -6)
+                if model.wifiPasswordPrompt == network.ssid {
+                    PasswordRow(busy: model.wifiJoining != nil) { model.onJoinWiFi(network, $0) }
+                        .transition(.opacity)
+                }
+            }
+
+            if let error = model.wifiError {
+                Text(error).foregroundStyle(red).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private struct NetworkRow: View {
+    let network: PanelModel.WiFiNetwork
+    let joining: Bool
+    /// Another network is being joined.
+    let busy: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    private var enabled: Bool { !busy && !network.isCurrent }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: "wifi", variableValue: Double(network.bars) / 3)
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 16)
+                Text(network.ssid)
+                    .font(.system(size: 12.5, weight: network.isCurrent ? .semibold : .regular))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                if joining {
+                    ProgressView().controlSize(.mini)
+                } else if network.isCurrent {
+                    Image(systemName: "checkmark").font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                }
+                if network.isSecure {
+                    Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(.secondary)
+                }
+            }
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 6)
+            .frame(height: 24)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(hovering && enabled ? 0.07 : 0)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // The current network stays at full contrast; it just is not tappable.
+        .allowsHitTesting(enabled)
+        .opacity(busy && !joining ? 0.5 : 1)
+        .onHover { hovering = $0 }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(network.ssid)
+        .accessibilityValue([network.isCurrent ? L10n.text("Connected") : nil,
+                             network.isSecure ? L10n.text("Secured") : nil,
+                             L10n.format("Signal strength %d of 3", network.bars)]
+            .compactMap { $0 }.joined(separator: ", "))
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+private struct PasswordRow: View {
+    let busy: Bool
+    let submit: (String) -> Void
+    @State private var password = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            SecureField(L10n.text("Password"), text: $password)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .focused($focused)
+                .onSubmit(send)
+            Button(L10n.text("Join"), action: send)
+                .controlSize(.small)
+                .disabled(password.isEmpty || busy)
+        }
+        .padding(.leading, 30)
+        .padding(.trailing, 6)
+        .padding(.vertical, 2)
+        .onAppear { focused = true }
+    }
+
+    private func send() {
+        guard !password.isEmpty, !busy else { return }
+        submit(password)
+        password = ""
+    }
+}
+
+private struct LowPowerRow: View {
+    @ObservedObject var model: PanelModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L10n.text("Low Power Mode")).font(.system(size: 12.5)).foregroundStyle(Color.primary)
+                Text(L10n.text("Requires an administrator password")).font(.system(size: 10.5))
+            }
+            Spacer(minLength: 4)
+            if model.lowPowerBusy { ProgressView().controlSize(.mini) }
+            Toggle(L10n.text("Low Power Mode"), isOn: Binding(
+                get: { model.snapshot.lowPowerMode },
+                set: { model.onSetLowPower($0) }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .disabled(model.lowPowerBusy)
+        }
+        .padding(.trailing, 2)
     }
 }
 

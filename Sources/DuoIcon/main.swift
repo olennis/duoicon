@@ -12,6 +12,7 @@ private final class AppController: NSObject, NSApplicationDelegate, CLLocationMa
     private let volume = VolumeController()
     private let battery = BatteryReader()
     private let wifi = WiFiReader()
+    private let networks = WiFiNetworkService()
     private let locationManager = CLLocationManager()
     private var didRequestWiFiNameAccess = false
     private let volumeKeys = VolumeKeyMonitor()
@@ -96,6 +97,59 @@ private final class AppController: NSObject, NSApplicationDelegate, CLLocationMa
         model.onRefresh = { [weak self] in self?.refresh() }
         model.onQuit = { NSApp.terminate(nil) }
         model.onExpandIsland = { [weak self] in self?.panel.expandIsland() }
+        model.onScanWiFi = { [weak self] in self?.scanWiFi() }
+        model.onJoinWiFi = { [weak self] network, password in self?.joinWiFi(network, password: password) }
+        model.onSetLowPower = { [weak self] enabled in self?.setLowPower(enabled) }
+    }
+
+    private func scanWiFi() {
+        guard model.wifiScan != .scanning else { return }
+        model.wifiScan = .scanning
+        networks.scan { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .networks(let list):
+                self.model.wifiNetworks = list
+                self.model.wifiScan = .done
+            case .needsLocation:
+                self.model.wifiNetworks = []
+                self.model.wifiScan = .needsLocation
+            case .failed:
+                self.model.wifiScan = .failed
+            }
+        }
+    }
+
+    private func joinWiFi(_ network: PanelModel.WiFiNetwork, password: String?) {
+        guard model.wifiJoining == nil else { return }
+        model.wifiError = nil
+        model.wifiJoining = network.ssid
+        networks.join(network, password: password) { [weak self] result in
+            guard let self else { return }
+            self.model.wifiJoining = nil
+            switch result {
+            case .joined:
+                self.model.wifiPasswordPrompt = nil
+                self.updateStatusIcon()
+                self.scanWiFi()
+            case .needsPassword:
+                self.model.wifiPasswordPrompt = network.ssid
+                if password != nil || network.isKnown {
+                    self.model.wifiError = L10n.text("Couldn't join. Check the password.")
+                }
+            case .failed:
+                self.model.wifiError = L10n.format("Couldn't join %@", network.ssid)
+            }
+        }
+    }
+
+    private func setLowPower(_ enabled: Bool) {
+        guard !model.lowPowerBusy else { return }
+        model.lowPowerBusy = true
+        LowPowerMode.set(enabled) { [weak self] in
+            self?.model.lowPowerBusy = false
+            self?.updateStatusIcon()
+        }
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
@@ -186,7 +240,8 @@ private final class AppController: NSObject, NSApplicationDelegate, CLLocationMa
             batterySummary: batteryStatus.summary, powerSource: batteryStatus.powerSource,
             wifiConnected: wifiStatus.isConnected, wifiTitle: wifiStatus.title, wifiBars: wifiStatus.bars,
             wifiNeedsLocation: wifiStatus.isConnected && wifiStatus.networkName == nil && locationDenied,
-            volumeHUDActive: volumeKeys.isActive
+            volumeHUDActive: volumeKeys.isActive,
+            lowPowerMode: LowPowerMode.isEnabled
         ))
         let summary = L10n.format("%@, %@, Volume %d%%", batteryStatus.summary, wifiStatus.title, isMuted ? 0 : Int(outputVolume * 100))
         statusItem.button?.toolTip = summary
@@ -519,7 +574,7 @@ private extension NSImage {
     }
 }
 
-private final class WiFiReader {
+final class WiFiReader {
     struct Status {
         let title: String
         let isConnected: Bool
@@ -846,6 +901,14 @@ if CommandLine.arguments.contains("--self-test") {
         let full = PanelModel()
         full.apply(sample)
         full.expanded = .wifi
+        full.wifiScan = .done
+        full.wifiNetworks = [
+            .init(ssid: "Studio-5G", bars: 2, isSecure: true, isKnown: true, isCurrent: true),
+            .init(ssid: "Studio-2G", bars: 3, isSecure: true, isKnown: true, isCurrent: false),
+            .init(ssid: "Cafe Guest", bars: 2, isSecure: false, isKnown: false, isCurrent: false),
+            .init(ssid: "Neighbor", bars: 1, isSecure: true, isKnown: false, isCurrent: false),
+        ]
+        full.wifiPasswordPrompt = "Neighbor"
         full.setMode(.panel)
         render(full, to: "/tmp/duoicon-panel.png", dark: false)
         render(full, to: "/tmp/duoicon-panel-dark.png", dark: true)

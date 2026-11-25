@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Clicking inside the panel no longer closes it, so cards can be expanded. The surface height was never reported, so every click counted as outside.
+- The expanded Wi-Fi card lists nearby networks. Tap one to join it; a secured network the Mac has not joined before asks for its password inline. Listing networks needs Location access.
+- The expanded battery card has a Low Power Mode switch. Changing it asks for an administrator password and applies to both battery and power adapter.
 - Clicking the icon now opens a panel with volume, Wi-Fi, and battery cards in place of the menu. Cards expand for details, and transitions use springs that respect Reduce Motion.
 - The volume slider has 16 notches and snaps to the nearest step on release.
 - The volume key HUD is now a compact island below the icon that expands into the panel when clicked.

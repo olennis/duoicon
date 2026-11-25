@@ -48,3 +48,17 @@
 "Volume key HUD on" = "Volume key HUD on";
 "Waiting for permission…" = "Waiting for permission…";
 "⌥⇧ + volume keys: 1/64 steps" = "⌥⇧ + volume keys: 1/64 steps";
+
+// Wi-Fi networks and Low Power Mode
+"Allow Location access to list Wi-Fi networks" = "Allow Location access to list Wi-Fi networks";
+"Couldn't join %@" = "Couldn't join %@";
+"Couldn't join. Check the password." = "Couldn't join. Check the password.";
+"Couldn't scan for networks" = "Couldn't scan for networks";
+"Join" = "Join";
+"Low Power Mode" = "Low Power Mode";
+"Networks" = "Networks";
+"No networks found" = "No networks found";
+"Password" = "Password";
+"Requires an administrator password" = "Needs admin password";
+"Scan Again" = "Scan Again";
+"Secured" = "Secured";
